@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synertek Project/Task Management</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 { font-size: 2.5rem; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
+        .header p { color: #666; font-size: 1.1rem; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        .nav-tab { padding: 12px 24px; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; }
+        .nav-tab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 16px; }
+        .stat-card h3 { color: #666; font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase; }
+        .stat-value { font-size: 2.5rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { background: rgba(255, 255, 255, 0.95); border-radius: 16px; padding: 25px; margin-bottom: 20px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px 16px; border: 2px solid #e0e6ed; border-radius: 10px; font-size: 1rem; }
+        
+        .status-history-container { background-color: #f8f9fa; border-radius: 10px; padding: 15px; }
+        .status-history-list .status-entry { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid #e9ecef; }
+        .status-entry.editing { background-color: #e9ecef; }
+        .status-entry-controls button { padding: 4px 8px; font-size: 0.8rem; border-radius: 5px; margin-left: 5px;}
+        .remove-status-btn { background: #e74c3c; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; }
+        .add-status-form { display: flex; gap: 10px; margin-top: 15px; }
+        .add-status-form .btn { padding: 10px 15px; }
+
+        .project-status, .task-item { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+        .task-item { display: flex; align-items: center; background: #f1f3f5; margin-bottom: 8px; }
+        .task-checkbox { margin-right: 12px; transform: scale(1.2); cursor: pointer; }
+        .task-name.completed { text-decoration: line-through; color: #868e96; }
+        
+        .gantt-chart-container { overflow-x: auto; padding: 10px; position: relative; }
+        .gantt-chart { display: grid; gap: 10px; }
+        .gantt-row { display: grid; grid-template-columns: 200px 1fr; align-items: center; }
+        .gantt-bar-wrapper { position: relative; height: 30px; }
+        .gantt-bar-planned { background-color: #e9ecef; position: absolute; height: 100%; width: 100%; border-radius: 15px; }
+        .gantt-bar-actual { position: absolute; height: 100%; border-radius: 15px; display: flex; overflow: hidden; }
+        .gantt-bar-segment { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; overflow: hidden; white-space: nowrap; padding: 0 5px; }
+        .gantt-days-left-label { position: absolute; right: -80px; width: 75px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: #343a40; font-weight: 600; }
+        .gantt-header { display: grid; grid-template-columns: 200px 1fr; font-weight: bold; margin-bottom: 10px; }
+        .gantt-today-line { position: absolute; top: 45px; bottom: 0; width: 2px; background-color: #e74c3c; z-index: 10; }
+        
+        .pie-chart-container { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 15px; }
+        .pie-chart { width: 100px; height: 100px; border-radius: 50%; flex-shrink: 0; }
+        .pie-legend ul { list-style: none; padding: 0; font-size: 0.9rem; }
+        .pie-legend li { display: flex; align-items: center; margin-bottom: 5px; }
+        .legend-color-box { width: 15px; height: 15px; border-radius: 4px; margin-right: 8px; flex-shrink: 0; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .close-btn { float: right; font-size: 1.5rem; cursor: pointer; }
+        .no-data-message { text-align: center; padding: 40px; }
+        .danger-zone { border: 2px dashed #e74c3c; border-radius: 16px; padding: 20px; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"><h1>Synertek Project/Task Management</h1><p>Track your projects and tasks with precision</p></div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('dashboard')">📊 Dashboard</button>
+            <button class="nav-tab" onclick="showTab('projects')">🏗️ Projects</button>
+            <button class="nav-tab" onclick="showTab('tasks')">✅ Tasks</button>
+            <button class="nav-tab" onclick="showTab('reports')">📄 Reports</button>
+        </div>
+
+        <div id="dashboard" class="tab-content active">
+            <div class="dashboard-grid">
+                 <div class="stat-card"><h3>Total Projects</h3><div class="stat-value" id="totalProjects">0</div></div>
+                 <div class="stat-card"><h3>Active Projects</h3><div class="stat-value" id="activeProjects">0</div></div>
+                 <div class="stat-card"><h3>Completed Projects</h3><div class="stat-value" id="completedProjects">0</div></div>
+                 <div class="stat-card"><h3>Pending Tasks</h3><div class="stat-value" id="pendingTasks">0</div></div>
+            </div>
+            <div class="card"><h2>🗓️ Project Timeline</h2><div class="gantt-chart-container"><div id="ganttChart"></div></div></div>
+        </div>
+
+        <div id="projects" class="tab-content"><div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>🏗️ Projects</h2><button class="btn btn-primary" onclick="openProjectModal()">➕ New Project</button>
+            </div><div id="projectsList"></div>
+        </div></div>
+
+        <div id="tasks" class="tab-content"><div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>✅ All Tasks</h2><button class="btn btn-primary" onclick="openTaskModal()">➕ New Task</button>
+            </div><div id="allTasksList"></div>
+        </div></div>
+        
+        <div id="reports" class="tab-content">
+            <div class="card">
+                <h2>Export Data</h2>
+                <button class="btn btn-primary" onclick="exportDataToCsv()">📄 Export All Data to CSV</button>
+            </div>
+            <div class="danger-zone">
+                <h2>Danger Zone</h2>
+                <button class="btn btn-danger" onclick="deleteAllData()">🗑️ Delete All Application Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="projectModal" class="modal"><div class="modal-content">
+            <span class="close-btn" onclick="closeModal('projectModal')">&times;</span>
+            <h2 id="projectModalTitle">New Project</h2>
+            <form id="projectForm">
+                <input type="hidden" id="projectId">
+                <div class="form-group"><label>Project Name</label><input type="text" id="projectName" required></div>
+                <div class="form-group"><label>Start Date</label><input type="date" id="projectStartDate" onchange="renderPlannedPreviewInModal()" required></div>
+                <div class="form-group"><label>Project Completion Date</label><input type="date" id="projectDueDate" onchange="renderPlannedPreviewInModal()"></div>
+                <div class="form-group"><label>Description</label><textarea id="projectDescription" rows="2"></textarea></div>
+                <div class="form-group"><label>Status History</label><div class="status-history-container">
+                        <div id="statusHistoryList" class="status-history-list"></div>
+                        <div class="add-status-form" id="addStatusForm">
+                            <input type="hidden" id="editingStatusIndex">
+                            <input type="text" id="newStatusText" list="status-list" placeholder="New Status...">
+                            <input type="date" id="newStatusDate">
+                            <div id="statusUpdateButtons">
+                                <button type="button" class="btn btn-primary" onclick="addStatusUpdate()">Add</button>
+                            </div>
+                        </div>
+                        <datalist id="status-list"></datalist>
+                        <div class="pie-chart-container" id="plannedPieContainer"></div>
+                </div></div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn" onclick="closeModal('projectModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Project</button>
+                </div>
+            </form>
+    </div></div>
+    <div id="taskModal" class="modal"><div class="modal-content">
+        <span class="close-btn" onclick="closeModal('taskModal')">&times;</span>
+        <h2 id="taskModalTitle">New Task</h2>
+        <form id="taskForm">
+            <input type="hidden" id="taskId">
+            <div class="form-group"><label>Task Name</label><input type="text" id="taskName" required></div>
+            <div class="form-group"><label>Description</label><textarea id="taskDescription" rows="3"></textarea></div>
+            <div class="form-group"><label>Project</label><select id="taskProject"></select></div>
+            <div class="form-group"><label>Due Date</label><input type="date" id="taskDueDate"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn" onclick="closeModal('taskModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Task</button>
+            </div>
+        </form>
+    </div></div>
+
+<script>
+let projects = [];
+let tasks = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+    renderAll();
+    document.getElementById('projectForm').addEventListener('submit', handleProjectSubmit);
+    document.getElementById('taskForm').addEventListener('submit', handleTaskSubmit);
+});
+
+function saveData() { localStorage.setItem('synertekProjectData', JSON.stringify({ projects, tasks })); }
+function loadData() {
+    const data = JSON.parse(localStorage.getItem('synertekProjectData'));
+    if (data) {
+        projects = data.projects || [];
+        tasks = data.tasks || [];
+        projects.forEach(p => { if (!p.statusHistory) p.statusHistory = [{ status: 'Planning', date: p.startDate }]; });
+    }
+}
+
+function renderAll() {
+    updateDashboard();
+    renderProjects();
+    renderTasks();
+}
+function showTab(tabName) {
+    document.querySelectorAll('.tab-content, .nav-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    document.querySelector(`.nav-tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+    renderAll();
+}
+
+const getCurrentStatus = (p) => p.statusHistory.slice().sort((a, b) => new Date(b.date) - new Date(a.date))[0]?.status || 'N/A';
+const isProjectCompleted = (p) => getCurrentStatus(p).toLowerCase().includes('complete');
+const dayDiff = (d1, d2) => Math.ceil((new Date(d1) - new Date(d2)) / (1000 * 60 * 60 * 24));
+const getColorForString = (str) => { let h = 0; if (!str) return '#ccc'; for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h); return `hsl(${h % 360}, 65%, 75%)`; };
+const getTextColorForBg = (c) => (c && parseInt(c.match(/,\s*(\d+)%/)[1]) > 60) ? '#333' : '#fff';
+
+function getNextId(prefix, items) {
+    const numbers = items
+        .map(item => parseInt(item.id.replace(prefix, '').trim(), 10))
+        .filter(num => !isNaN(num));
+    const maxId = numbers.length > 0 ? Math.max(...numbers) : 0;
+    return `${prefix} ${maxId + 1}`;
+}
+
+function updateDashboard() {
+    document.getElementById('totalProjects').textContent = projects.length;
+    document.getElementById('activeProjects').textContent = projects.filter(p => !isProjectCompleted(p)).length;
+    document.getElementById('completedProjects').textContent = projects.filter(isProjectCompleted).length;
+    document.getElementById('pendingTasks').textContent = tasks.filter(t => !t.completed).length;
+    renderGanttChart();
+}
+
+function renderGanttChart() {
+    const container = document.getElementById('ganttChart');
+    const projectsWithDates = projects.filter(p => p.startDate && p.dueDate);
+    if (projectsWithDates.length === 0) { container.innerHTML = '<p class="no-data-message">No projects with start/due dates.</p>'; return; }
+
+    const today = new Date();
+    const allDates = projectsWithDates.flatMap(p => [new Date(p.startDate), new Date(p.dueDate), today]);
+    const minDate = new Date(Math.min(...allDates)), maxDate = new Date(Math.max(...allDates));
+    const totalTimelineDays = Math.max(1, dayDiff(maxDate, minDate));
+
+    let chartHTML = `<div class="gantt-header"><div>Project</div><div style="position:relative;">Timeline</div></div>`;
+    
+    projectsWithDates.forEach(project => {
+        const startOffsetDays = dayDiff(project.startDate, minDate);
+        const totalProjectDays = dayDiff(project.dueDate, project.startDate);
+        
+        const actualProgressEndDate = isProjectCompleted(project) ? new Date(project.dueDate) : new Date(Math.min(today, new Date(project.dueDate)));
+        const actualProgressTotalDays = Math.max(0, dayDiff(actualProgressEndDate, project.startDate));
+        const actualBarWidthPercent = (actualProgressTotalDays / totalProjectDays) * 100;
+        
+        let segmentsHTML = '';
+        const sortedHistory = project.statusHistory.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        sortedHistory.forEach((event, index) => {
+            const segmentStart = new Date(event.date);
+            if (segmentStart >= actualProgressEndDate) return;
+            
+            const isLastSegmentInActuals = index === sortedHistory.length - 1 || new Date(sortedHistory[index + 1].date) > actualProgressEndDate;
+            const segmentEnd = isLastSegmentInActuals ? actualProgressEndDate : new Date(sortedHistory[index + 1].date);
+            
+            const segmentDuration = Math.max(0, dayDiff(segmentEnd, segmentStart));
+            if (segmentDuration > 0) {
+                const color = getColorForString(event.status);
+                segmentsHTML += `<div class="gantt-bar-segment" title="${event.status} (${segmentDuration} days)" style="background-color:${color}; color:${getTextColorForBg(color)}; width: ${(segmentDuration / actualProgressTotalDays) * 100}%;">
+                    ${event.status.substring(0, 3).toUpperCase()} (${segmentDuration}d)
+                </div>`;
+            }
+        });
+
+        const daysLeft = dayDiff(project.dueDate, new Date());
+        let daysLeftText = isProjectCompleted(project) ? 'Completed' : (daysLeft < 0 ? `${Math.abs(daysLeft)} days overdue` : `${daysLeft} days left`);
+
+        chartHTML += `
+            <div class="gantt-row">
+                <div style="font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${project.name}">${project.name}</div>
+                <div class="gantt-bar-wrapper" style="margin-left:${(startOffsetDays / totalTimelineDays) * 100}%; width:${(totalProjectDays / totalTimelineDays) * 100}%;">
+                    <div class="gantt-bar-planned"></div>
+                    <div class="gantt-bar-actual" style="width: ${actualBarWidthPercent}%">${segmentsHTML}</div>
+                    <div class="gantt-days-left-label">${daysLeftText}</div>
+                </div>
+            </div>`;
+    });
+    
+    const todayOffsetDays = dayDiff(today, minDate);
+    if (todayOffsetDays >= 0 && todayOffsetDays <= totalTimelineDays) {
+        chartHTML += `<div class="gantt-today-line" style="left: calc(200px + ${(todayOffsetDays / totalTimelineDays) * (container.offsetWidth - 200)}px);"></div>`;
+    }
+    
+    container.innerHTML = chartHTML;
+}
+
+function renderProjects() {
+    const list = document.getElementById('projectsList');
+    list.innerHTML = projects.length ? '' : '<p class="no-data-message">No projects yet.</p>';
+    projects.forEach(p => {
+        const status = getCurrentStatus(p), color = getColorForString(status);
+        list.innerHTML += `<div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>${p.name} <small style="color:#6c757d;font-weight:400">(${p.id})</small></h3>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="project-status" style="background:${color};color:${getTextColorForBg(color)}">${status}</span>
+                    <button class="btn" style="padding:6px 12px;" onclick="editProject('${p.id}')">Edit</button>
+                    <button class="btn btn-danger" style="padding:6px 12px;" onclick="deleteProject('${p.id}')">Delete</button>
+                </div>
+            </div>
+        </div>`;
+    });
+}
+
+function deleteProject(projectId) {
+    if (confirm("Delete this project and all its tasks? This is irreversible.")) {
+        projects = projects.filter(p => p.id !== projectId);
+        tasks = tasks.filter(t => t.projectId !== projectId);
+        saveData();
+        renderAll();
+    }
+}
+
+function renderTasks() {
+    const list = document.getElementById('allTasksList');
+    list.innerHTML = tasks.length ? '' : '<p class="no-data-message">No tasks created yet.</p>';
+    tasks.forEach(t => {
+        const proj = projects.find(p => p.id === t.projectId);
+        list.innerHTML += `<div class="task-item">
+            <input class="task-checkbox" type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.id}')">
+            <div style="flex:1;">
+                <div class="task-name ${t.completed ? 'completed' : ''}">${t.name} <small style="color:#6c757d;font-weight:400">(${t.id})</small></div>
+                <small>${proj ? 'Project: ' + proj.name : 'No project'} | Due: ${t.dueDate || 'N/A'}</small>
+            </div>
+            <button class="btn" style="padding:4px 10px;" onclick="editTask('${t.id}')">Edit</button>
+            <button class="btn btn-danger" style="padding:4px 10px;" onclick="deleteTask('${t.id}')">Delete</button>
+        </div>`;
+    });
+}
+
+function toggleTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) { task.completed = !task.completed; saveData(); renderTasks(); updateDashboard(); }
+}
+
+function deleteTask(taskId) {
+    if (confirm("Delete this task?")) { tasks = tasks.filter(t => t.id !== taskId); saveData(); renderAll(); }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function openProjectModal() {
+    document.getElementById('projectForm').reset();
+    document.getElementById('projectId').value = '';
+    document.getElementById('projectModalTitle').textContent = 'New Project';
+    document.getElementById('statusHistoryList').innerHTML = '';
+    document.getElementById('newStatusDate').value = new Date().toISOString().split('T')[0];
+    resetStatusForm();
+    updateStatusDatalist();
+    document.getElementById('plannedPieContainer').innerHTML = '';
+    document.getElementById('projectModal').classList.add('active');
+}
+
+function editProject(projectId) {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    openProjectModal();
+    document.getElementById('projectModalTitle').textContent = 'Edit Project';
+    document.getElementById('projectId').value = project.id;
+    document.getElementById('projectName').value = project.name;
+    document.getElementById('projectStartDate').value = project.startDate;
+    document.getElementById('projectDueDate').value = project.dueDate;
+    document.getElementById('projectDescription').value = project.description;
+    renderStatusHistoryInModal(project.statusHistory);
+}
+
+function renderStatusHistoryInModal(history) {
+    const list = document.getElementById('statusHistoryList');
+    list.innerHTML = '';
+    history.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).forEach((item, index) => {
+        list.innerHTML += `
+            <div class="status-entry" data-index="${index}" data-status="${item.status}" data-date="${item.date}">
+                <span><b>${item.status}</b> on ${item.date}</span>
+                <div class="status-entry-controls">
+                    <button type="button" class="btn btn-secondary" onclick="editStatusEntry(this)">Edit</button>
+                    ${index > 0 ? `<button type="button" class="btn btn-danger" onclick="this.parentElement.parentElement.remove(); renderPlannedPreviewInModal();">Del</button>` : ''}
+                </div>
+            </div>`;
+    });
+    renderPlannedPreviewInModal();
+}
+
+function renderPlannedPreviewInModal() {
+    const container = document.getElementById('plannedPieContainer');
+    const startDate = document.getElementById('projectStartDate').value;
+    const dueDate = document.getElementById('projectDueDate').value;
+    if (!startDate || !dueDate) { container.innerHTML = ''; return; }
+
+    const totalDuration = dayDiff(dueDate, startDate);
+    if (totalDuration <= 0) { container.innerHTML = ''; return; }
+    
+    const history = Array.from(document.querySelectorAll('#statusHistoryList .status-entry'))
+        .map(el => ({ status: el.dataset.status, date: el.dataset.date }))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    let gradient = 'conic-gradient(', currentPercent = 0, legendHTML = '<ul>';
+    history.forEach((event, index) => {
+        const segmentStart = event.date;
+        const segmentEnd = (index + 1 < history.length) ? history[index + 1].date : dueDate;
+        const segmentDuration = dayDiff(segmentEnd, segmentStart);
+        if (segmentDuration > 0) {
+            const percent = (segmentDuration / totalDuration) * 100;
+            const color = getColorForString(event.status);
+            gradient += `${color} ${currentPercent}% ${currentPercent + percent}%, `;
+            legendHTML += `<li><div class="legend-color-box" style="background:${color};"></div>${event.status} (${segmentDuration}d)</li>`;
+            currentPercent += percent;
+        }
+    });
+    
+    container.innerHTML = `
+        <label style="font-weight:600; font-size:0.9rem; margin-bottom:5px; display:block;">Planned Time Allocation</label>
+        <div class="pie-chart-container">
+            <div class="pie-chart" style="background:${gradient.slice(0, -2)};"></div>
+            <div class="pie-legend">${legendHTML}</ul></div>
+        </div>
+    `;
+}
+
+function addStatusUpdate() {
+    const text = document.getElementById('newStatusText').value.trim();
+    const date = document.getElementById('newStatusDate').value;
+    if (!text || !date) { alert('Please provide both status and date.'); return; }
+
+    const list = document.getElementById('statusHistoryList');
+    const existingDates = Array.from(list.querySelectorAll('.status-entry')).map(el => el.dataset.date);
+    if (existingDates.includes(date)) { alert('A status for this date already exists. Remove it first.'); return; }
+    
+    const currentHistory = Array.from(list.querySelectorAll('.status-entry')).map(el => ({ status: el.dataset.status, date: el.dataset.date }));
+    currentHistory.push({ status: text, date });
+    renderStatusHistoryInModal(currentHistory);
+    resetStatusForm();
+}
+
+function editStatusEntry(button) {
+    const entry = button.closest('.status-entry');
+    if (document.querySelector('.status-entry.editing')) { alert("Please finish your current edit first."); return; }
+    entry.classList.add('editing');
+    
+    document.getElementById('newStatusText').value = entry.dataset.status;
+    document.getElementById('newStatusDate').value = entry.dataset.date;
+    document.getElementById('editingStatusIndex').value = entry.dataset.index;
+
+    document.getElementById('statusUpdateButtons').innerHTML = `
+        <button type="button" class="btn btn-primary" onclick="updateStatusEntry()">Update</button>
+        <button type="button" class="btn btn-secondary" onclick="resetStatusForm()">Cancel</button>
+    `;
+}
+
+function updateStatusEntry() {
+    const text = document.getElementById('newStatusText').value.trim();
+    const date = document.getElementById('newStatusDate').value;
+    const indexToUpdate = document.getElementById('editingStatusIndex').value;
+    
+    if (!text || !date) { alert('Status and date cannot be empty.'); return; }
+
+    const list = document.getElementById('statusHistoryList');
+    const currentHistory = Array.from(list.querySelectorAll('.status-entry')).map(el => ({ status: el.dataset.status, date: el.dataset.date }));
+    
+    currentHistory[indexToUpdate] = { status: text, date: date };
+    
+    renderStatusHistoryInModal(currentHistory);
+    resetStatusForm();
+}
+
+function resetStatusForm() {
+    document.getElementById('newStatusText').value = '';
+    document.getElementById('newStatusDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('editingStatusIndex').value = '';
+    document.querySelector('.status-entry.editing')?.classList.remove('editing');
+    document.getElementById('statusUpdateButtons').innerHTML = `<button type="button" class="btn btn-primary" onclick="addStatusUpdate()">Add</button>`;
+}
+
+function handleProjectSubmit(e) {
+    e.preventDefault();
+    const projectId = document.getElementById('projectId').value;
+    const newHistory = Array.from(document.querySelectorAll('#statusHistoryList .status-entry')).map(el => ({ status: el.dataset.status, date: el.dataset.date })).sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (newHistory.length === 0) { alert("Project must have at least one status."); return; }
+
+    const projectData = {
+        name: document.getElementById('projectName').value.trim(),
+        startDate: document.getElementById('projectStartDate').value,
+        dueDate: document.getElementById('projectDueDate').value,
+        description: document.getElementById('projectDescription').value.trim(),
+        statusHistory: newHistory
+    };
+
+    if (projectId) {
+        const index = projects.findIndex(p => p.id === projectId);
+        projects[index] = { ...projects[index], ...projectData };
+    } else {
+        projects.push({ id: getNextId('STP', projects), ...projectData, createdAt: new Date().toISOString() });
+    }
+    saveData();
+    renderAll();
+    closeModal('projectModal');
+}
+
+function openTaskModal() {
+    document.getElementById('taskForm').reset();
+    document.getElementById('taskId').value = '';
+    document.getElementById('taskModalTitle').textContent = 'New Task';
+    updateProjectDropdown();
+    document.getElementById('taskModal').classList.add('active');
+}
+
+function editTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+        openTaskModal();
+        document.getElementById('taskModalTitle').textContent = 'Edit Task';
+        document.getElementById('taskId').value = task.id;
+        document.getElementById('taskName').value = task.name;
+        document.getElementById('taskDescription').value = task.description;
+        document.getElementById('taskProject').value = task.projectId;
+        document.getElementById('taskDueDate').value = task.dueDate;
+    }
+}
+
+function handleTaskSubmit(e) {
+    e.preventDefault();
+    const taskId = document.getElementById('taskId').value;
+    const taskData = {
+        name: document.getElementById('taskName').value.trim(),
+        description: document.getElementById('taskDescription').value.trim(),
+        projectId: document.getElementById('taskProject').value,
+        dueDate: document.getElementById('taskDueDate').value
+    };
+    if (taskId) {
+        const task = tasks.find(t => t.id === taskId);
+        Object.assign(task, taskData, {completed: task.completed});
+    } else {
+        tasks.push({ id: getNextId('STT', tasks), ...taskData, completed: false });
+    }
+    saveData();
+    renderAll();
+    closeModal('taskModal');
+}
+
+function updateProjectDropdown() {
+    const select = document.getElementById('taskProject');
+    select.innerHTML = '<option value="">No Project</option>' + projects.map(p => `<option value="${p.id}">${p.name} (${p.id})</option>`).join('');
+}
+function updateStatusDatalist() {
+    const list = document.getElementById('status-list');
+    const statuses = [...new Set(projects.flatMap(p => p.statusHistory.map(s => s.status)))];
+    list.innerHTML = [...new Set(['Planning', 'In Progress', 'Testing', 'On Hold', 'Completed', ...statuses])].map(s => `<option value="${s}">`).join('');
+}
+
+function deleteAllData() {
+    if (confirm("WARNING: This will delete ALL data. This is irreversible. Are you sure?")) {
+        localStorage.removeItem('synertekProjectData');
+        location.reload();
+    }
+}
+
+function exportDataToCsv() {
+    const escape = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
+    let csv = "PROJECTS\nID,Name,Start Date,Completion Date,Description,Current Status\n";
+    projects.forEach(p => { csv += [p.id, p.name, p.startDate, p.dueDate, p.description, getCurrentStatus(p)].map(escape).join(',') + '\n'; });
+    
+    csv += "\nSTATUS HISTORY\nProject ID,Status,Date\n";
+    projects.forEach(p => p.statusHistory.forEach(s => { csv += [p.id, s.status, s.date].map(escape).join(',') + '\n'; }));
+    
+    csv += "\nTASKS\nID,Name,Project ID,Due Date,Completed\n";
+    tasks.forEach(t => { csv += [t.id, t.name, t.projectId, t.dueDate, t.completed].map(escape).join(',') + '\n'; });
+    
+    const link = document.createElement("a");
+    link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+    link.download = `Synertek_Project_Data_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+}
+</script>
+</body>
+</html>
